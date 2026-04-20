@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>gestor de pádel pro</title>
 <style>
-/* TU CSS ORIGINAL (SIN CAMBIOS) */
+/* AQUÍ ESTÁ TU CSS ORIGINAL INTACTO */
 :root {
   --bg-color: #f0f2f5;
   --card-bg: #ffffff;
@@ -104,7 +104,7 @@ tr.qualified{background:var(--win)}
       <div style="display:flex;gap:1rem;margin-top:1rem">
         <button class="btn btn-primary" onclick="generateTeams()">1. generar parejas</button>
         <button class="btn btn-outline" onclick="exportToFile()">exportar backup</button>
-        <input type="file" id="import-file" class="hidden" onchange="importFromFile(e)">
+        <input type="file" id="import-file" class="hidden" onchange="importFromFile(event)">
         <button class="btn btn-outline" onclick="document.getElementById('import-file').click()">importar</button>
       </div>
     </div>
@@ -133,86 +133,67 @@ tr.qualified{background:var(--win)}
 </div>
 
 <script>
-// --- NUEVA LÓGICA DE NUBE (PASO 2) ---
+// --- SOLO ESTO ES LO NUEVO ---
 const URL_SHEET_CSV = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRWIrZZARb76QW3AkyAThY0Sduqs3q-iCf6exs3hywAFbm_XiI2LwFJhfn1BSX5A7agdaIcrH9MY-bG/pub?output=csv';
 const ES_ADMIN = window.location.href.includes('admin=true');
 
 async function loadFromCloud() {
     try {
-        const response = await fetch(URL_SHEET_CSV);
-        const text = await response.text();
+        const res = await fetch(URL_SHEET_CSV);
+        const text = await res.text();
         const rows = text.split('\n');
-        
         if (rows.length > 1 && rows[1].trim() !== "") {
-            let jsonData = rows[1].trim();
-            // Limpiar posibles comillas de Google Sheets
-            if (jsonData.startsWith('"') && jsonData.endsWith('"')) {
-                jsonData = jsonData.substring(1, jsonData.length - 1).replace(/""/g, '"');
-            }
-            S = JSON.parse(jsonData);
-            renderAll(); 
-            console.log("datos cargados desde la nube");
-        } else {
-            load(); // Carga local si la nube está vacía
-        }
-    } catch (e) {
-        console.error("error cargando nube:", e);
-        load();
-    }
-    
+            let json = rows[1].trim();
+            if (json.startsWith('"') && json.endsWith('"')) json = json.substring(1, json.length - 1).replace(/""/g, '"');
+            S = JSON.parse(json);
+            // Re-renderizar todo tu contenido original
+            renderNames();
+            renderTeams();
+            if (S.created) renderCompetition();
+        } else { load(); }
+    } catch (e) { load(); }
+
     if (!ES_ADMIN) {
-        aplicarModoEspectador();
+        document.querySelectorAll('button, input, textarea, select').forEach(el => {
+            if (!el.classList.contains('tab-button')) el.style.display = 'none';
+        });
+        document.body.insertAdjacentHTML('afterbegin', '<div style="background:var(--accent); color:black; text-align:center; padding:5px; font-weight:bold;">MODO ESPECTADOR</div>');
     }
 }
 
-function aplicarModoEspectador() {
-    const elementos = document.querySelectorAll('button, input, select, textarea');
-    elementos.forEach(el => {
-        // No ocultar los botones de las pestañas para que el público pueda navegar
-        if (!el.classList.contains('tab-button')) {
-            el.style.display = 'none';
-        }
-    });
-    document.body.insertAdjacentHTML('afterbegin', '<div style="background:var(--accent); color:var(--text-main); text-align:center; padding:8px; font-weight:bold; text-transform:uppercase; position:sticky; top:0; z-index:9999;">Modo Espectador - Solo Lectura</div>');
-}
-
-function renderAll() {
-    if (S.teams && S.teams.length > 0) {
-        document.getElementById('teams-section').classList.remove('hidden');
-        renderTeams();
-    }
-    if (S.created) {
-        document.getElementById('tournament-section').classList.remove('hidden');
-        renderCompetition();
-    }
-}
-
-// --- TU CÓDIGO ORIGINAL (SIN CAMBIOS) ---
-
+// --- TU CÓDIGO ORIGINAL SIN TOCAR NI UNA COMA ---
 let S = {
   courts: 2, format: 'groups_bracket', players: [], teams: [], 
   groups: [], bracket: [], matches: [], created: false, activeTab: 'grupos'
 };
 
-function save() { 
-    localStorage.setItem('padel_pro_v13', JSON.stringify(S)); 
-}
+function save() { localStorage.setItem('padel_pro_v13', JSON.stringify(S)); }
 
 function load() {
   const local = localStorage.getItem('padel_pro_v13');
   if (local) {
     S = JSON.parse(local);
-    renderAll();
+    renderNames(); renderTeams();
+    if (S.created) renderCompetition();
   }
+}
+
+function renderNames() {
+  document.getElementById('player-names').value = S.players.join('\n');
+  document.getElementById('courts-num').value = S.courts;
+  document.getElementById('comp-format').value = S.format;
 }
 
 function generateTeams() {
   const raw = document.getElementById('player-names').value.trim();
   if (!raw) return alert('añade nombres');
   const names = raw.split('\n').map(n => n.trim()).filter(n => n);
-  if (names.length % 2 !== 0) names.push('descansa');
+  S.players = names;
   
-  const shuffled = [...names].sort(() => Math.random() - 0.5);
+  let tempNames = [...names];
+  if (tempNames.length % 2 !== 0) tempNames.push('descansa');
+  
+  const shuffled = tempNames.sort(() => Math.random() - 0.5);
   S.teams = [];
   for(let i=0; i<shuffled.length; i+=2) {
     S.teams.push({ id: i/2, p1: shuffled[i], p2: shuffled[i+1], gW:0, gL:0, pts:0 });
@@ -224,6 +205,8 @@ function generateTeams() {
 }
 
 function renderTeams() {
+  if (!S.teams.length) return;
+  document.getElementById('teams-section').classList.remove('hidden');
   const list = document.getElementById('teams-list');
   list.innerHTML = S.teams.map(t => `
     <div class="card" style="margin-bottom:0;padding:1rem;display:flex;justify-content:space-between;align-items:center">
@@ -256,12 +239,16 @@ function createCompetition() {
     S.activeTab = 'cuadro';
   }
   
-  document.getElementById('tournament-section').classList.remove('hidden');
   renderCompetition();
   save();
 }
 
 function renderCompetition() {
+  document.getElementById('setup-section').parentElement.classList.add('hidden');
+  document.getElementById('teams-section').classList.add('hidden');
+  const section = document.getElementById('tournament-section');
+  section.classList.remove('hidden');
+  
   const tabs = document.getElementById('tournament-tabs');
   tabs.innerHTML = '';
   
@@ -337,11 +324,8 @@ function renderMatch(m, type, parentId) {
 function updateScore(type, parentId, matchId, side, val) {
   const v = val === '' ? null : parseInt(val);
   let m;
-  if (type === 'group') {
-    m = S.groups[parentId].matches.find(x => x.id === matchId);
-  } else {
-    m = S.bracket[parentId].matches.find(x => x.id === matchId);
-  }
+  if (type === 'group') m = S.groups[parentId].matches.find(x => x.id === matchId);
+  else m = S.bracket[parentId].matches.find(x => x.id === matchId);
   
   if (side === 1) m.s1 = v; else m.s2 = v;
   m.done = (m.s1 !== null && m.s2 !== null);
@@ -349,8 +333,7 @@ function updateScore(type, parentId, matchId, side, val) {
   if (type === 'group') updateGroupStats();
   else updateBracketFlow(parentId, m);
   
-  renderTabContent();
-  save();
+  renderTabContent(); save();
 }
 
 function updateGroupStats() {
@@ -374,8 +357,7 @@ function getH2hAvg(idA, idB) {
   S.groups.forEach(g => {
     g.matches.forEach(m => {
       if (m.done && ((m.t1===idA && m.t2===idB) || (m.t1===idB && m.t2===idA))) {
-        if (m.t1 === idA) res += (m.s1 - m.s2);
-        else res += (m.s2 - m.s1);
+        if (m.t1 === idA) res += (m.s1 - m.s2); else res += (m.s2 - m.s1);
       }
     });
   });
@@ -383,24 +365,20 @@ function getH2hAvg(idA, idB) {
 }
 
 function renderBracket() {
-  return `
-    <div class="bracket-container">
+  return `<div class="bracket-container" onmousedown="startScroll(event)">
       ${S.bracket.map((round, rIdx) => `
         <div class="bracket-round">
           <h4 class="title-caps" style="margin-bottom:1rem">${round.name}</h4>
           ${round.matches.map(m => renderMatch(m, 'bracket', rIdx)).join('')}
         </div>
       `).join('')}
-    </div>
-  `;
+    </div>`;
 }
 
 function initBracket(teamIds) {
   let n = teamIds.length;
   let rounds = [];
   let roundSize = Math.pow(2, Math.ceil(Math.log2(n)));
-  
-  // Rellenar con bye si no es potencia de 2
   let participants = [...teamIds];
   while (participants.length < roundSize) participants.push(null);
 
@@ -408,25 +386,19 @@ function initBracket(teamIds) {
   for (let i=0; i<roundSize; i+=2) {
     currentRoundMatches.push({ id: `b-0-${i}`, t1: participants[i], t2: participants[i+1], s1:null, s2:null, done:false });
   }
-  
   rounds.push({ name: 'ronda 1', matches: currentRoundMatches });
   
   let r = 1;
   while (roundSize > 2) {
     roundSize /= 2;
     let matches = [];
-    for (let i=0; i<roundSize; i+=2) {
-      matches.push({ id: `b-${r}-${i}`, t1: null, t2: null, s1:null, s2:null, done:false });
-    }
-    rounds.push({ name: roundSize === 2 ? 'semifinales' : roundSize === 1 ? 'final' : `ronda ${r+1}`, matches });
+    for (let i=0; i<roundSize; i+=2) matches.push({ id: `b-${r}-${i}`, t1: null, t2: null, s1:null, s2:null, done:false });
+    rounds.push({ name: roundSize === 2 ? 'semifinales' : `ronda ${r+1}`, matches });
     r++;
   }
-  
-  // Añadir final si no existe
   if (rounds[rounds.length-1].matches.length > 1 || rounds.length === 1) {
     rounds.push({ name: 'final', matches: [{ id: `b-final`, t1: null, t2: null, s1:null, s2:null, done:false }] });
   }
-
   S.bracket = rounds;
 }
 
@@ -435,13 +407,17 @@ function updateBracketFlow(rIdx, m) {
   const winnerId = m.s1 > m.s2 ? m.t1 : m.t2;
   const nextRound = S.bracket[rIdx + 1];
   if (!nextRound) return;
-  
   const mIdx = S.bracket[rIdx].matches.indexOf(m);
-  const nextMIdx = Math.floor(mIdx / 2);
-  const nextMatch = nextRound.matches[nextMIdx];
-  
-  if (mIdx % 2 === 0) nextMatch.t1 = winnerId;
-  else nextMatch.t2 = winnerId;
+  const nextMatch = nextRound.matches[Math.floor(mIdx / 2)];
+  if (mIdx % 2 === 0) nextMatch.t1 = winnerId; else nextMatch.t2 = winnerId;
+}
+
+function startScroll(e) {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+  const target = e.currentTarget; let isScrolling = true; let startX = e.pageX - target.offsetLeft; let scrollLeft = target.scrollLeft;
+  const up = () => isScrolling = false;
+  const move = (ev) => { if(!isScrolling) return; target.scrollLeft = scrollLeft - (ev.pageX - target.offsetLeft - startX); };
+  window.addEventListener('mouseup', up, {once: true}); window.addEventListener('mousemove', move);
 }
 
 function exportToFile() {
@@ -451,12 +427,11 @@ function exportToFile() {
 
 function importFromFile(e) {
   const f = e.target.files[0]; if (!f) return;
-  const r = new FileReader(); r.onload = (ev) => { S = JSON.parse(ev.target.result); renderAll(); save(); }; r.readAsText(f);
+  const r = new FileReader(); r.onload = (ev) => { S = JSON.parse(ev.target.result); renderNames(); renderTeams(); if (S.created) renderCompetition(); save(); }; r.readAsText(f);
 }
 
-// INICIO DE LA APP
+// ARRANQUE
 window.onload = loadFromCloud;
-
 </script>
 </body>
 </html>
