@@ -157,8 +157,8 @@ textarea#namesArea { resize: vertical; min-height: 80px; }
 // ============================================================
 //  CONFIGURACIÓN — rellena estas dos líneas con tus datos
 // ============================================================
-const SHEETS_READ_URL  = 'TU_URL_CSV_DE_GOOGLE_SHEETS';   // termina en ...output=csv
-const SHEETS_WRITE_URL = 'TU_URL_APPS_SCRIPT';            // la crearemos en el paso 2
+const SHEETS_READ_URL  = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQhsME4G5h-i0pM9jinL8jIiCs8DFdMJavCSGN6Q8Hd43Rt5IVLJXqkyWbNPJwxmwZsnD28CQQOZXHu/pub?gid=0&single=true&output=csv';   // termina en ...output=csv
+const SHEETS_WRITE_URL = 'https://script.google.com/macros/s/AKfycbyWFof6qlWUW8jwdnLfC2KjyknFgrsyusAFOEte1Au8iGFxjZMZvc50rQ0BxDtiM12Y/exec';            // la crearemos en el paso 2
 // ============================================================
 
 let S = { names: [], teams: [], format: null, results: {}, created: false, view: 'main' };
